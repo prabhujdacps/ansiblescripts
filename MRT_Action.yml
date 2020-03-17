@@ -1,0 +1,5 @@
+---
+- hosts: "{{ server }}"
+  roles:
+  - { role: windows/mrt_action, when: ansible_connection is defined and ansible_connection == 'winrm'}
+  - { role: linux/mrt_action, when: ansible_connection is undefined or ansible_connection != 'winrm'}

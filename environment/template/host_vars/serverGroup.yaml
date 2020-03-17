@@ -1,0 +1,10 @@
+#Server group configurations, ARM_CLUSTER_NAME should be empty
+ARM_SERVER_GROUP_NAME : 
+ARM_CLUSTER_MULTICAST : Y
+
+#Server sets, IP ignore if cluster type is server group
+ARM_SERVER :
+    <NODE> :
+         NAME :
+    <NODE> :
+         NAME : 

@@ -1,0 +1,24 @@
+- name: Ansible utiity
+  hosts: "{{ util | default('MRT') }}"
+
+  tasks:
+    - name: Check OS
+      block:
+        - name: Machine information
+          vars:
+           msg: |
+            Host name: {{ansible_hostname }}
+            OS family: {{ ansible_os_family }}
+            Date: {{ ansible_date_time.date }}
+            Timezone: {{ ansible_date_time.tz }}
+            Distribution: {{ ansible_distribution }}
+            Distribution Version: {{ ansible_distribution_version }}
+            Kernel: {{ ansible_kernel }}
+            Architecture: {{ ansible_architecture }}
+            CPU: {{ ansible_processor }}
+            CPU Core: {{ ansible_processor_cores }}
+            RAM: {{ ansible_memtotal_mb }}
+          debug:
+           msg: "{{ msg.split('\n') }}"
+      tags:
+      - os

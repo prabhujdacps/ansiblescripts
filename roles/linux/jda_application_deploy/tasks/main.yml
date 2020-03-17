@@ -1,0 +1,160 @@
+---
+- name: Set properties
+  set_fact:
+    scriptsLocation: "{{ansible_env.HOME}}/temp_connect_dir/appDeploy_{{ ARM_SERVER_NAME }}_{{ APPLICATION_NAME }}"
+    className: 'com.jda.jci.installer.MRTApplicationDeploy'
+  tags:
+    - propertyFile
+    - deploy
+    - action
+    - setup
+    - clean
+##Cleanup
+- name: Cleanup
+  block:   
+    - name: Check directory
+      stat:
+        path: "{{scriptsLocation}}"
+      register: mrt_install_location
+
+    - name: Delete scripts if existed in target location
+      file:
+        state: absent
+        path: "{{scriptsLocation}}"
+      when: mrt_install_location.stat.exists
+  tags:
+    - clean
+    
+##Transfer scripts/files into remote loction
+- name: Transfer files and setup scripts 
+  block:   
+    - name: Create directory
+      file:
+        path: "{{scriptsLocation}}"
+        state: directory
+
+    - name: Unzipping {{ MRT_INSTALL_LOCATION }}/{{ INSTALL_ZIP_NAME }}  into remote install location
+      unarchive:
+        src: "{{ MRT_INSTALL_LOCATION }}/{{ INSTALL_ZIP_NAME }}"
+        dest: "{{scriptsLocation}}/"       
+
+    - name: Copy {{ SOURCE_KEY_STORE_PATH }} into remote location
+      copy:
+        src: "{{ SOURCE_KEY_STORE_PATH }}"
+        dest: "{{scriptsLocation}}/"
+      when : SOURCE_KEY_STORE_PATH is defined and SOURCE_KEY_STORE_PATH != ""
+      
+    - name: Check Mule application jar file exists
+      stat:
+        path: "{{ MULE_APPLICATION_JAR_PATH }}/{{MULE_APPLICATION_JAR_NAME }}"
+      register: mrt_jar_path
+      when: MULE_APPLICATION_JAR_PATH is defined and MULE_APPLICATION_JAR_PATH != ''
+
+    - name: Copy Mule application jar into remote location
+      copy:
+        src: "{{ MULE_APPLICATION_JAR_PATH }}/{{MULE_APPLICATION_JAR_NAME }}"
+        dest: "{{scriptsLocation}}/"
+      when: MULE_APPLICATION_JAR_PATH is defined and MULE_APPLICATION_JAR_PATH != '' and MULE_APPLICATION_JAR_NAME is defined and MULE_APPLICATION_JAR_NAME != '' and mrt_jar_path.stat.exists == False
+
+    - name: Copy Mule application jar from download location into script location
+      copy:
+        src: "{{ MULE_APPLICATION_JAR_PATH }}/{{MULE_APPLICATION_JAR_NAME }}"
+        dest: "{{scriptsLocation}}/"
+        remote_src: yes
+      when: MULE_APPLICATION_JAR_PATH is defined and MULE_APPLICATION_JAR_PATH != '' and MULE_APPLICATION_JAR_NAME is defined and MULE_APPLICATION_JAR_NAME != '' and mrt_jar_path.stat.exists == True
+  tags:
+    - setup
+##Property file setup 
+- name: Silent install property creation
+  block:
+    - name: Delete silent-installer.properties
+      file:
+        state: absent
+        path: "{{scriptsLocation}}/silent-installer.properties"
+    - name: Create properties file
+      file:
+        path: "{{scriptsLocation}}/silent-installer.properties"
+        state: touch
+
+    - name: Add values into silent-installer.properties in remote installer location
+      lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'ARM_INSTALLATION={{ ARM_INSTALLATION }}'
+        - 'EU_COUNTRY={{ EU_COUNTRY }}'
+        - 'ANYPOINT_USER_NAME={{ANYPOINT_USER_NAME }}'
+        - 'ANYPOINT_USER_PASSWORD={{ ANYPOINT_USER_PASSWORD}}'
+        - 'BUSINESS_GROUP={{BUSINESS_GROUP }}'
+        - 'ARM_ENVIRONMENT_NAME={{ ARM_ENVIRONMENT_NAME}}'
+        - 'ARM_SERVER_NAME={{ARM_SERVER_NAME }}'
+        - 'APPLICATION_NAME={{APPLICATION_NAME }}'
+
+    - name: Add AES_SECRET values into silent-installer.properties in remote installer location
+      lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'AES_SECRET_KEY_STORE_PATH={{ AES_SECRET_KEY_STORE_PATH }}'
+        - 'AES_SECRET_KEY_STORE_PASSWORD={{AES_SECRET_KEY_STORE_PASSWORD }}'
+        - 'AES_SECRET_KEY_ALIAS={{AES_SECRET_KEY_ALIAS }}'
+        - 'AES_SECRET_KEY_PASSWORD={{ AES_SECRET_KEY_PASSWORD}}'
+      when : SOURCE_KEY_STORE_PATH is defined and SOURCE_KEY_STORE_PATH != ""
+       
+    - name: Add deployable jar information into silent-installer.properties in remote installer location
+      lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'MULE_APPLICATION_JAR_PATH={{scriptsLocation}}/{{MULE_APPLICATION_JAR_NAME}}'
+      when: MULE_APPLICATION_JAR_PATH is defined and MULE_APPLICATION_JAR_PATH != '' and MULE_APPLICATION_JAR_NAME is defined and MULE_APPLICATION_JAR_NAME != '' 
+
+    - name: Add Exchange asset id and version into silent-installer.properties in remote installer location
+      lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'EXCHANGE_ASSET_ID={{EXCHANGE_ASSET_ID}}'
+        - 'EXCHANGE_ASSET_VERSION={{EXCHANGE_ASSET_VERSION}}'
+      when: MULE_APPLICATION_JAR_PATH is undefined or MULE_APPLICATION_JAR_PATH == '' or MULE_APPLICATION_JAR_NAME is undefined or MULE_APPLICATION_JAR_NAME == ''
+
+    - name: Add application properties into silent-installer.properties in remote installer location
+      lineinfile:
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: "application.{{ item.key }}={{ item.value }}"
+      with_dict: "{{ applicationProperties }}"
+      when: applicationProperties | default(false, true) and  applicationProperties | trim != ''
+  tags:
+    - propertyFile    
+##Script execution
+- name: Script execution 
+  block:
+    - name: Set runtime arguments
+      set_fact:
+        arguments: '-redeploy'
+      when: application_action is undefined
+    - name: Set runtime arguments action
+      set_fact:
+        arguments: '-{{application_action}}'
+      when: application_action is defined
+        
+    - name: get install jar file name
+      find:
+        paths: "{{scriptsLocation}}"
+        patterns: 'installation-assistance*'
+      register: found_files
+    - name: Set installJarName
+      set_fact:
+        installJarName: "{{ found_files.files[0].path | basename }}"
+       
+    - name: MRT Application deployment
+      command: "java -cp {{ installJarName }} {{className}} -s silent-installer.properties {{arguments}}"
+      args:
+        chdir: "{{scriptsLocation}}"
+      register: output
+    - debug:
+        var: output.stdout_lines
+  tags:
+  - deploy
+  - action
+

@@ -1,0 +1,144 @@
+MRT:
+    jdawindows1:
+        vars:
+            ansible_host: 10.0.5.6
+            ansible_user: jciadmin
+            ansible_password: xxxxxxxx
+            ansible_connection: winrm
+            ansible_winrm_transport: basic
+            ansible_winrm_server_cert_validation: ignore
+        host_vars: [server1,cluster1,cps,srs,vts,ms,configrepo,configupdate]
+            
+    jdawindows2:
+        vars:
+            ansible_host: 10.0.5.7
+            ansible_user: jciadmin
+            ansible_password: xxxxxxxx
+            ansible_connection: winrm
+            ansible_winrm_transport: basic
+            ansible_winrm_server_cert_validation: ignore    
+        host_vars: [server2]
+
+
+###Common properties
+group_vars:
+    all:
+        MRT_INSTALL_LOCATION : /home/jciadmin/JDAConnect/Repository/24012020/installer_18Feb01
+        INSTALL_ZIP_NAME : jda-connect-mule4-server-installation-2020.1.0-SNAPSHOT.zip
+        ## Mule license
+        MULE_LICENSE_PATH : /home/jciadmin/JDAConnect/Repository/license.lic
+        ## ARM Password encryption
+        SOURCE_KEY_STORE_PATH : /home/jciadmin/JDAConnect/Repository/jda-connect-secret-key.jks
+        AES_SECRET_KEY_STORE_PATH : jda-connect-secret-key.jks
+        AES_SECRET_KEY_STORE_PASSWORD : password
+        AES_SECRET_KEY_ALIAS : jdaconnect
+        AES_SECRET_KEY_PASSWORD : passw0rd
+        ARM_INSTALLATION : Y
+        EU_COUNTRY : N
+        ANYPOINT_USER_NAME : mprabhu
+        ANYPOINT_USER_PASSWORD : "'![CLqFKpIEjz24MHuZ+3mdWg==]'"
+        BUSINESS_GROUP : Release0TestActivity
+        ARM_ENVIRONMENT_NAME : Test-Environment
+
+host_vars:
+    ##VM1
+    server1:
+        ARM_SERVER_NAME : MRT-ANS-SR-WINLB-1
+        HOST_NAME : localhost
+        INSTALL_LOCATION : C:\\JDAConnect\\MRT-ANS-SR-WINLB-1
+        serverProperties :
+            wrapper.java.additional.50 : -Danypoint.platform.gatekeeper=disabled
+    ##VM2
+    server2:
+        ARM_SERVER_NAME : MRT-ANS-SR-WINLB-2
+        HOST_NAME : localhost
+        INSTALL_LOCATION : C:\\JDAConnect\\MRT-ANS-SR-WINLB-2
+        serverProperties :
+            wrapper.java.additional.50 : -Danypoint.platform.gatekeeper=disabled
+
+    cluster1:
+        ARM_CLUSTER_NAME : MRT-ANS-SR-WINLB-CLUSX-1
+        ARM_CLUSTER_MULTICAST : Y
+        ARM_SERVER :
+            A :
+             NAME : MRT-ANS-SR-WINLB-1
+            B :
+             NAME : MRT-ANS-SR-WINLB-2
+    cps:
+        ARM_SERVER_NAME : MRT-ANS-SR-WINLB-CLUSX-1
+        APPLICATION_NAME : MRT-ANS-SR-WINLB-CLUSX-1-cps
+        EXCHANGE_ASSET_ID: jda-config-service
+        EXCHANGE_ASSET_VERSION: 2020.1.0-SNAPSHOT-NB
+        applicationProperties :
+            config.repo.backend: git
+            config.repo.git.uri : https://github.com/prabhujdacps/connect01.git
+            config.repo.git.username : prabhujdacps
+            config.repo.git.password : a733d1f7f8b4e470a1a11988e56cb45dfe1752a9
+
+    configrepo:
+        EXCHANGE_ASSET_ID: jda-config-repo
+        EXCHANGE_ASSET_VERSION: 1.0.2
+        EXCHANGE_ASSET_FILE_NAME: jda-config-repo-1.0.2.zip
+        EXCHANGE_ASSET_DOWNLOAD_LOCATION: C:\JDAConnect\Setup
+        
+        
+    configupdate:
+        CONFIG_REPO_FILE_PATH : C:\JDAConnect\Setup\jda-config-repo-1.0.2.zip
+        mule.env : Test_Environment
+        cps.label : version7
+        cps.host : 23.99.251.236
+        cps.port : 9810
+        cps.protocol : https
+
+        Applications:
+            MessageStore:
+                categories:
+                    database:
+                        MSDatabase.url: "jdbc:sqlserver://jdaazsqldb01.public.33e2f3684252.database.windows.net:3342;databaseName=jdaazsqldb02"
+                        MSDatabase.driverClassName: "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+                        MSDatabase.user: "jdaazsqldb01"
+                        MSDatabase.password: "xxxxxxxx123"
+
+
+    ms:
+        ARM_SERVER_NAME : MRT-ANS-SR-WINLB-CLUSX-1
+        APPLICATION_NAME : MRT-ANS-SR-WINLB-CLUSX-1-ms
+        EXCHANGE_ASSET_ID: jda-message-store
+        EXCHANGE_ASSET_VERSION: 2020.1.0-SNAPSHOT
+        applicationProperties :
+            cps.host: 23.99.251.236
+            cps.port: 9810
+            cps.useLocalFiles: false
+            cps.label: version7
+
+         
+    srs:
+        ARM_SERVER_NAME : MRT-ANS-SR-WINLB-CLUSX-1
+        APPLICATION_NAME : MRT-ANS-SR-WINLB-CLUSX-1-srs
+        EXCHANGE_ASSET_ID: jda-services-registry-service
+        EXCHANGE_ASSET_VERSION: 2020.1.0-SNAPSHOT
+        applicationProperties :
+            cps.host: 23.99.251.236
+            cps.port: 9810
+            cps.useLocalFiles: false
+            cps.label: version7
+
+       
+    vts:
+        ARM_SERVER_NAME : MRT-ANS-SR-WINLB-CLUSX-1
+        APPLICATION_NAME : MRT-ANS-SR-WINLB-CLUSX-1-vts
+        EXCHANGE_ASSET_ID: jda-version-transformation-service
+        EXCHANGE_ASSET_VERSION: 2020.1.0-SNAPSHOT
+        applicationProperties :
+            cps.host: 23.99.251.236
+            cps.port: 9810
+            cps.useLocalFiles: false
+            cps.label: version7
+
+     
+
+
+
+
+
+

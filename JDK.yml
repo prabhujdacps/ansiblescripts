@@ -1,0 +1,5 @@
+---
+- hosts: "{{ node }}"
+  roles:
+  - { role: windows/utils/jdk_install, when: ansible_connection is defined and ansible_connection == 'winrm'}
+  - { role: linux/utils/jdk_install, when: ansible_connection is undefined or ansible_connection != 'winrm'}

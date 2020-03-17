@@ -1,0 +1,48 @@
+---
+- hosts: "{{ server }}"
+  roles:
+
+##WINDOWS
+  - role: windows/mrt_action
+    vars:
+     mrt_action: stop
+    when: ansible_connection is defined and ansible_connection == 'winrm'
+  - role: windows/mrt_action
+    vars:
+     mrt_action: remove
+    when: ansible_connection is defined and ansible_connection == 'winrm'
+
+  - role: windows/jda_install
+    when: ansible_connection is defined and ansible_connection == 'winrm'
+    
+  - role: windows/mrt_license
+    when: ansible_connection is defined and ansible_connection == 'winrm'
+
+  - role: windows/mrt_action
+    vars:
+     mrt_action: install
+    when: ansible_connection is defined and ansible_connection == 'winrm'
+
+  - role: windows/mrt_action
+    vars:
+     mrt_action: start
+    when: ansible_connection is defined and ansible_connection == 'winrm'
+
+
+##LINUX
+  - role: linux/mrt_action
+    vars:
+     mrt_action: stop
+    when: ansible_connection is undefined or ansible_connection != 'winrm'
+
+  - role: linux/jda_install
+    when: ansible_connection is undefined or ansible_connection != 'winrm'
+
+  - role: linux/mrt_license
+    when: ansible_connection is undefined or ansible_connection != 'winrm'
+    
+  - role: linux/mrt_action
+    vars:
+     mrt_action: start
+    when: ansible_connection is undefined or ansible_connection != 'winrm'
+

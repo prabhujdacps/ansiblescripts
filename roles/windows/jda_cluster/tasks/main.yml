@@ -1,0 +1,171 @@
+---
+- name: Set cluster name as ARM_CLUSTER_NAME
+  set_fact:
+    clusterName: "{{ARM_CLUSTER_NAME}}"
+    className: 'com.jda.jci.installer.MRTCluster'
+  when: ARM_CLUSTER_NAME is defined and ARM_CLUSTER_NAME != ""
+  tags:
+    - propertyFile
+    - install
+    - action
+    - setup
+    - clean
+- name: Set cluster name as ARM_SERVER_GROUP_NAME
+  set_fact:
+    clusterName: "{{ARM_SERVER_GROUP_NAME}}"
+    className: 'com.jda.jci.installer.MRTCluster'
+  when: ARM_CLUSTER_NAME is undefined or ARM_CLUSTER_NAME == ""
+  tags:
+    - propertyFile
+    - install
+    - action
+    - setup
+    - clean
+- name: Set properties
+  set_fact:
+    scriptsLocation: "{{ansible_env.USERPROFILE}}\\temp_connect_dir\\cluster_{{clusterName}}"
+    className: 'com.jda.jci.installer.MRTCluster'
+  tags:
+    - propertyFile
+    - install
+    - action
+    - setup
+    - clean
+##Cleanup
+- name: Cleanup
+  block:   
+    - name: Check directory
+      win_stat:
+        path: "{{scriptsLocation}}"
+      register: mrt_cluster_location
+
+    - name: Delete scripts if existed in target location
+      win_file:
+        state: absent
+        path: "{{scriptsLocation}}"
+      when: mrt_cluster_location.stat.exists
+  tags:
+    - clean
+    
+##Transfer scripts/files into remote loction
+- name: Transfer files and setup scripts 
+  block:   
+    - name: Create directory
+      win_file:
+        path: "{{scriptsLocation}}"
+        state: directory
+
+    - name: Copy install file {{ MRT_INSTALL_LOCATION }}/{{ INSTALL_ZIP_NAME }} into remote location
+      win_copy:
+        src: "{{ MRT_INSTALL_LOCATION }}/{{ INSTALL_ZIP_NAME }}"
+        dest: "{{scriptsLocation}}/"       
+
+    - name: Unzipping {{ INSTALL_ZIP_NAME }} remote install location
+      win_unzip:
+        src: "{{scriptsLocation}}/{{ INSTALL_ZIP_NAME }}"
+        dest: "{{scriptsLocation}}/"
+
+    - name: Copy {{ SOURCE_KEY_STORE_PATH }} into remote location
+      win_copy:
+        src: "{{ SOURCE_KEY_STORE_PATH }}"
+        dest: "{{scriptsLocation}}/"
+      when : SOURCE_KEY_STORE_PATH is defined and SOURCE_KEY_STORE_PATH != ""
+  tags:
+    - setup
+##Property file setup 
+- name: Silent install property creation
+  block:
+    - name: Delete silent-installer.properties
+      win_file:
+        state: absent
+        path: "{{scriptsLocation}}/silent-installer.properties"
+    - name: Create properties file
+      win_file:
+        path: "{{scriptsLocation}}/silent-installer.properties"
+        state: touch
+
+    - name: Add values into silent-installer.properties in remote installer location
+      win_lineinfile:
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'ARM_INSTALLATION={{ ARM_INSTALLATION }}'
+        - 'EU_COUNTRY={{ EU_COUNTRY }}'
+        - 'ANYPOINT_USER_NAME={{ANYPOINT_USER_NAME }}'
+        - 'ANYPOINT_USER_PASSWORD={{ ANYPOINT_USER_PASSWORD}}'
+        - 'BUSINESS_GROUP={{BUSINESS_GROUP }}'
+        - 'ARM_ENVIRONMENT_NAME={{ ARM_ENVIRONMENT_NAME}}'
+
+    - name: Add AES_SECRET values into silent-installer.properties in remote installer location
+      win_lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'AES_SECRET_KEY_STORE_PATH={{ AES_SECRET_KEY_STORE_PATH }}'
+        - 'AES_SECRET_KEY_STORE_PASSWORD={{AES_SECRET_KEY_STORE_PASSWORD }}'
+        - 'AES_SECRET_KEY_ALIAS={{AES_SECRET_KEY_ALIAS }}'
+        - 'AES_SECRET_KEY_PASSWORD={{ AES_SECRET_KEY_PASSWORD}}'
+      when : SOURCE_KEY_STORE_PATH is defined and SOURCE_KEY_STORE_PATH != ""
+
+    - name: Add cluster values into silent-installer.properties in remote installer location
+      win_lineinfile:
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'ARM_CLUSTER_NAME={{ ARM_CLUSTER_NAME}}'
+        - 'ARM_CLUSTER_MULTICAST={{ ARM_CLUSTER_MULTICAST}}'
+      when: ARM_CLUSTER_NAME is defined and ARM_CLUSTER_NAME != ""
+
+    - name: Add server group values into silent-installer.properties in remote installer location
+      win_lineinfile:
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'ARM_SERVER_GROUP_NAME={{ ARM_SERVER_GROUP_NAME}}'
+      when: ARM_CLUSTER_NAME is undefined and ARM_CLUSTER_NAME == ""
+
+    - name: Add servers properties [ARM_SERVER_NAME]
+      win_lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: "ARM_SERVER_NAME_{{ item.key }}={{ item.value.NAME }}"
+      with_dict: "{{ ARM_SERVER }}"
+
+    - name: Add servers properties [ARM_SERVER_IP]
+      win_lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: "ARM_SERVER_IP_{{ item.key }}={{ item.value.IP }}"
+      with_dict: "{{ ARM_SERVER }}"
+      when: ARM_CLUSTER_NAME is defined and ARM_CLUSTER_NAME != "" and ARM_CLUSTER_MULTICAST is defined and ARM_CLUSTER_MULTICAST == 'N'
+  tags:
+    - propertyFile    
+##Script execution
+- name: Script execution 
+  block:
+    - name: Set runtime arguments
+      set_fact:
+        arguments: '-reinstall'
+      when: cluster_action is undefined
+    - name: Set runtime arguments action
+      set_fact:
+        arguments: '-{{cluster_action}}'
+      when: cluster_action is defined
+    - name: get install jar file name
+      win_find:
+        paths: "{{scriptsLocation}}"
+        patterns: 'installation-assistance*'
+      register: found_files
+    - name: Set installJarName
+      set_fact:
+        installJarName: "{{ found_files.files[0].path | basename }}"
+       
+    - name: MRT Cluster/Server group Installation
+      win_command: "java -cp {{ installJarName }} {{className}} -s silent-installer.properties {{arguments}}"
+      args:
+        chdir: "{{scriptsLocation}}"
+      register: output
+    - debug:
+        var: output.stdout_lines
+  tags:
+  - install
+  - action
+

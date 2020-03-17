@@ -1,0 +1,130 @@
+---
+- name: Set properties
+  set_fact:
+    scriptsLocation: "{{ansible_env.HOME}}/temp_connect_dir/asset_{{ EXCHANGE_ASSET_ID }}_{{ EXCHANGE_ASSET_VERSION }}"
+    className: 'com.jda.jci.installer.MRTApplicationDeploy'
+  tags:
+    - propertyFile
+    - deploy
+    - download
+    - action
+    - setup
+    - clean
+##Cleanup
+- name: Cleanup
+  block:   
+    - name: Check directory
+      stat:
+        path: "{{scriptsLocation}}"
+      register: mrt_install_location
+
+    - name: Delete scripts if existed in target location
+      file:
+        state: absent
+        path: "{{scriptsLocation}}"
+      when: mrt_install_location.stat.exists
+  tags:
+    - clean
+    
+##Transfer scripts/files into remote loction
+- name: Transfer files and setup scripts 
+  block:   
+    - name: Create directory
+      file:
+        path: "{{scriptsLocation}}"
+        state: directory
+
+    - name: Unzipping {{ MRT_INSTALL_LOCATION }}/{{ INSTALL_ZIP_NAME }}  into remote install location
+      unarchive:
+        src: "{{ MRT_INSTALL_LOCATION }}/{{ INSTALL_ZIP_NAME }}"
+        dest: "{{scriptsLocation}}/"       
+
+    - name: Copy {{ SOURCE_KEY_STORE_PATH }} into remote location
+      copy:
+        src: "{{ SOURCE_KEY_STORE_PATH }}"
+        dest: "{{scriptsLocation}}/"
+      when : SOURCE_KEY_STORE_PATH is defined and SOURCE_KEY_STORE_PATH != ""
+  tags:
+    - setup
+##Property file setup 
+- name: Silent install property creation
+  block:
+    - name: Delete silent-installer.properties
+      file:
+        state: absent
+        path: "{{scriptsLocation}}/silent-installer.properties"
+    - name: Create properties file
+      file:
+        path: "{{scriptsLocation}}/silent-installer.properties"
+        state: touch
+
+    - name: Add values into silent-installer.properties in remote installer location
+      lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'ARM_INSTALLATION={{ ARM_INSTALLATION }}'
+        - 'EU_COUNTRY={{ EU_COUNTRY }}'
+        - 'ANYPOINT_USER_NAME={{ANYPOINT_USER_NAME }}'
+        - 'ANYPOINT_USER_PASSWORD={{ ANYPOINT_USER_PASSWORD}}'
+        - 'BUSINESS_GROUP={{BUSINESS_GROUP }}'
+        - 'EXCHANGE_ASSET_ID={{EXCHANGE_ASSET_ID}}'
+        - 'EXCHANGE_ASSET_VERSION={{EXCHANGE_ASSET_VERSION}}'
+
+    - name: Add values into silent-installer.properties in remote installer location
+      lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'EXCHANGE_ASSET_FILE_NAME={{EXCHANGE_ASSET_FILE_NAME}}'
+      when : EXCHANGE_ASSET_FILE_NAME is defined and EXCHANGE_ASSET_FILE_NAME != "" 
+
+    - name: Add values into silent-installer.properties in remote installer location
+      lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'EXCHANGE_ASSET_DOWNLOAD_LOCATION={{EXCHANGE_ASSET_DOWNLOAD_LOCATION}}'
+      when : EXCHANGE_ASSET_DOWNLOAD_LOCATION is defined and EXCHANGE_ASSET_DOWNLOAD_LOCATION != "" 
+      
+    - name: Add values into silent-installer.properties in remote installer location
+      lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'EXCHANGE_ASSET_DOWNLOAD_LOCATION={{scriptsLocation}}'
+      when : EXCHANGE_ASSET_DOWNLOAD_LOCATION is undefined        
+
+    - name: Add AES_SECRET values into silent-installer.properties in remote installer location
+      lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'AES_SECRET_KEY_STORE_PATH={{ AES_SECRET_KEY_STORE_PATH }}'
+        - 'AES_SECRET_KEY_STORE_PASSWORD={{AES_SECRET_KEY_STORE_PASSWORD }}'
+        - 'AES_SECRET_KEY_ALIAS={{AES_SECRET_KEY_ALIAS }}'
+        - 'AES_SECRET_KEY_PASSWORD={{ AES_SECRET_KEY_PASSWORD}}'
+      when : SOURCE_KEY_STORE_PATH is defined and SOURCE_KEY_STORE_PATH != ""
+  tags:
+    - propertyFile    
+##Script execution
+- name: Script execution 
+  block:
+    - name: get install jar file name
+      find:
+        paths: "{{scriptsLocation}}"
+        patterns: 'installation-assistance*'
+      register: found_files
+    - name: Set installJarName
+      set_fact:
+        installJarName: "{{ found_files.files[0].path | basename }}"
+       
+    - name: MRT Application deployment
+      command: "java -cp {{ installJarName }} {{className}} -s silent-installer.properties -downloadExchangeAssets"
+      args:
+        chdir: "{{scriptsLocation}}"
+      register: output
+    - debug:
+        var: output.stdout_lines
+  tags:
+  - download

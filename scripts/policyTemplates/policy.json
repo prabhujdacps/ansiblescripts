@@ -1,0 +1,80 @@
+[
+    {
+        "groupId": "68ef9520-24e9-4cf2-b2f5-620025690913",
+        "assetId": "cors",
+        "assetVersion": "1.1.3",
+        "configurationData": {
+            "publicResource": false,
+            "supportCredentials": true,
+            "originGroups": [
+                {
+                    "name": "Default group",
+                    "origins": [
+                        "POLICY_CROS_ORIGINS"
+                    ],
+                    "accessControlMaxAge": 30,
+                    "allowedMethods": [
+                        {
+                            "methodName": "CONNECT",
+                            "isAllowed": false
+                        },
+                        {
+                            "methodName": "DELETE",
+                            "isAllowed": false
+                        },
+                        {
+                            "methodName": "GET",
+                            "isAllowed": true
+                        },
+                        {
+                            "methodName": "OPTIONS",
+                            "isAllowed": true
+                        },
+                        {
+                            "methodName": "PATCH",
+                            "isAllowed": false
+                        },
+                        {
+                            "methodName": "POST",
+                            "isAllowed": true
+                        },
+                        {
+                            "methodName": "PUT",
+                            "isAllowed": true
+                        },
+                        {
+                            "methodName": "TRACE",
+                            "isAllowed": false
+                        }
+                    ],
+                    "headers": [
+                        "authorization",
+                        "client_id",
+                        "client_secret",
+                        "content-type"
+                    ],
+                    "exposedHeaders": [
+                        "Access-Control-Allow-Origin"
+                    ]
+                }
+            ]
+        },
+        "pointcutData": null,
+        "disabled": false,
+        "order": null
+    },
+    {
+        "groupId": "68ef9520-24e9-4cf2-b2f5-620025690913",
+        "assetId": "openidconnect-access-token-enforcement",
+        "assetVersion": "1.3.1",
+        "configurationData": {
+            "scopes": "openid profile email",
+            "secureTrustStore": false,
+            "exposeHeaders": false,
+            "skipClientIdValidation": true
+        },
+        "pointcutData": null,
+        "disabled": false,
+        "order": 1
+    }
+]

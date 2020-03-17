@@ -1,0 +1,298 @@
+---
+- name: Set properties
+  set_fact:
+    scriptsLocation: "{{ansible_env.USERPROFILE}}\\temp_connect_dir\\apiAssert_{{ API_INSTANCE_LABEL_NAME }}"
+    className: 'com.jda.jci.installer.MRTApplicationDeploy'
+  tags:
+    - propertyFile
+    - assertDownload
+    - assertDownloadScript
+    - uploadAsset
+    - createAPI
+    - deploy
+    - action
+    - setup
+    - clean
+##Cleanup
+- name: Cleanup
+  block:   
+    - name: Check directory
+      win_stat:
+        path: "{{scriptsLocation}}"
+      register: mrt_install_location
+
+    - name: Delete scripts if existed in target location
+      win_file:
+        state: absent
+        path: "{{scriptsLocation}}"
+      when: mrt_install_location.stat.exists
+  tags:
+    - clean
+    
+##Transfer scripts/files into remote loction
+- name: Transfer files and setup scripts 
+  block:   
+    - name: Create directory
+      win_file:
+        path: "{{scriptsLocation}}"
+        state: directory
+
+    - name: Copy install zip file into remote location
+      win_copy:
+        src: "{{ MRT_INSTALL_LOCATION }}/{{ INSTALL_ZIP_NAME }}"
+        dest: "{{scriptsLocation}}/"       
+
+    - name: Unzipping MRT in install location
+      win_unzip:
+        src: "{{scriptsLocation}}/{{ INSTALL_ZIP_NAME }}"
+        dest: "{{scriptsLocation}}/"
+
+    - name: Copy {{ SOURCE_KEY_STORE_PATH }} into remote location
+      win_copy:
+        src: "{{ SOURCE_KEY_STORE_PATH }}"
+        dest: "{{scriptsLocation}}/"
+      when : SOURCE_KEY_STORE_PATH is defined and SOURCE_KEY_STORE_PATH != ""
+
+    - name: Copy {{ API_INSTANCE_POLICIES }} into remote location
+      win_copy:
+        src: "{{ API_INSTANCE_POLICIES }}"
+        dest: "{{scriptsLocation}}/policy.json"
+      when : API_INSTANCE_POLICIES is defined and API_INSTANCE_POLICIES != ""
+      
+    - name: Check API asset file 
+      win_stat:
+        path: "{{ API_EXCHANGE_ASSET_FILE_PATH }}"
+      register: mrt_jar_path
+      when: API_EXCHANGE_ASSET_FILE_PATH is defined and API_EXCHANGE_ASSET_FILE_PATH != ''
+
+    - name: Copy API asset file into remote location
+      win_copy:
+        src: "{{ API_EXCHANGE_ASSET_FILE_PATH }}"
+        dest: "{{scriptsLocation}}/"
+      when: API_EXCHANGE_ASSET_FILE_PATH is defined and API_EXCHANGE_ASSET_FILE_PATH != '' and mrt_jar_path.stat.exists == False
+
+    - name: Copy API asset file from download location into script location
+      win_copy:
+        src: "{{ API_EXCHANGE_ASSET_FILE_PATH }}"
+        dest: "{{scriptsLocation}}/"
+        remote_src: yes
+      when: API_EXCHANGE_ASSET_FILE_PATH is defined and API_EXCHANGE_ASSET_FILE_PATH != '' and mrt_jar_path.stat.exists == True
+  tags:
+    - setup
+## Download asset 
+##Property file setup 
+- name: Silent asset property creation
+  block:
+    - name: Delete asset-download.properties
+      win_file:
+        state: absent
+        path: "{{scriptsLocation}}/asset-download.properties"
+    - name: Create properties file
+      win_file:
+        path: "{{scriptsLocation}}/asset-download.properties"
+        state: touch
+    - name: Add values into asset-download.properties in remote installer location
+      win_lineinfile:
+        dest: "{{scriptsLocation}}/asset-download.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'EU_COUNTRY={{ EXTERNAL_EXCHANGE_EU_COUNTRY }}'
+        - 'ANYPOINT_USER_NAME={{EXTERNAL_EXCHANGE_ANYPOINT_USER_NAME }}'
+        - 'ANYPOINT_USER_PASSWORD={{ EXTERNAL_EXCHANGE_ANYPOINT_USER_PASSWORD}}'
+        - 'BUSINESS_GROUP={{EXTERNAL_EXCHANGE_BUSINESS_GROUP }}'
+      when : EXTERNAL_EXCHANGE_EU_COUNTRY is defined
+      
+    - name: Add values into asset-download.properties in remote installer location
+      win_lineinfile:
+        dest: "{{scriptsLocation}}/asset-download.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'EU_COUNTRY={{ EU_COUNTRY }}'
+        - 'ANYPOINT_USER_NAME={{ANYPOINT_USER_NAME }}'
+        - 'ANYPOINT_USER_PASSWORD={{ ANYPOINT_USER_PASSWORD}}'
+        - 'BUSINESS_GROUP={{BUSINESS_GROUP }}'
+      when : EXTERNAL_EXCHANGE_EU_COUNTRY is undefined       
+
+    - name: Add values into asset-download.properties in remote installer location
+      win_lineinfile:
+        dest: "{{scriptsLocation}}/asset-download.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'ARM_INSTALLATION={{ ARM_INSTALLATION }}'
+        - 'EXCHANGE_ASSET_ID={{EXCHANGE_ASSET_ID}}'
+        - 'EXCHANGE_ASSET_VERSION={{EXCHANGE_ASSET_VERSION}}'
+        - 'EXCHANGE_ASSET_FILE_NAME={{EXCHANGE_ASSET_ID}}-{{EXCHANGE_ASSET_VERSION}}.zip'
+        - 'EXCHANGE_ASSET_DOWNLOAD_LOCATION={{scriptsLocation}}'     
+
+    - name: Add AES_SECRET values into asset-download.properties in remote installer location
+      win_lineinfile: 
+        dest: "{{scriptsLocation}}/asset-download.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'AES_SECRET_KEY_STORE_PATH={{ AES_SECRET_KEY_STORE_PATH }}'
+        - 'AES_SECRET_KEY_STORE_PASSWORD={{AES_SECRET_KEY_STORE_PASSWORD }}'
+        - 'AES_SECRET_KEY_ALIAS={{AES_SECRET_KEY_ALIAS }}'
+        - 'AES_SECRET_KEY_PASSWORD={{ AES_SECRET_KEY_PASSWORD}}'
+      when : SOURCE_KEY_STORE_PATH is defined and SOURCE_KEY_STORE_PATH != ""
+    - name: Set application jar location 
+      set_fact:
+          MULE_APPLICATION_JAR_NAME: "{{EXCHANGE_ASSET_ID}}-{{EXCHANGE_ASSET_VERSION}}.jar"
+          MULE_APPLICATION_JAR_PATH: "{{scriptsLocation}}"
+  when : EXCHANGE_ASSET_ID is defined
+  tags:
+    - assertDownload    
+##Script execution
+- name: Script execution 
+  block:
+    - name: get install jar file name
+      win_find:
+        paths: "{{scriptsLocation}}"
+        patterns: 'installation-assistance*'
+      register: found_files
+    - name: Set installJarName
+      set_fact:
+        installJarName: "{{ found_files.files[0].path | basename }}"
+       
+    - name: MRT Application deployment
+      win_command: "java -cp {{ installJarName }} {{className}} -s asset-download.properties -downloadExchangeAssets"
+      args:
+        chdir: "{{scriptsLocation}}"
+      register: output
+    - debug:
+        var: output.stdout_lines
+  when : EXCHANGE_ASSET_ID is defined
+  tags:
+  - assertDownloadScript
+##Property file setup 
+- name: Silent install property creation
+  block:
+    - name: Delete silent-installer.properties
+      win_file:
+        state: absent
+        path: "{{scriptsLocation}}/silent-installer.properties"
+    - name: Create properties file
+      win_file:
+        path: "{{scriptsLocation}}/silent-installer.properties"
+        state: touch
+
+    - name: Add values into silent-installer.properties in remote installer location
+      win_lineinfile:
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'ARM_INSTALLATION={{ ARM_INSTALLATION }}'
+        - 'EU_COUNTRY={{ EU_COUNTRY }}'
+        - 'ANYPOINT_USER_NAME={{ANYPOINT_USER_NAME }}'
+        - 'ANYPOINT_USER_PASSWORD={{ ANYPOINT_USER_PASSWORD}}'
+        - 'BUSINESS_GROUP={{BUSINESS_GROUP }}'
+        - 'ARM_ENVIRONMENT_NAME={{ ARM_ENVIRONMENT_NAME}}'
+
+    - name: Add AES_SECRET values into silent-installer.properties in remote installer location
+      win_lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'AES_SECRET_KEY_STORE_PATH={{ AES_SECRET_KEY_STORE_PATH }}'
+        - 'AES_SECRET_KEY_STORE_PASSWORD={{AES_SECRET_KEY_STORE_PASSWORD }}'
+        - 'AES_SECRET_KEY_ALIAS={{AES_SECRET_KEY_ALIAS }}'
+        - 'AES_SECRET_KEY_PASSWORD={{ AES_SECRET_KEY_PASSWORD}}'
+      when : SOURCE_KEY_STORE_PATH is defined and SOURCE_KEY_STORE_PATH != ""
+       
+
+    - name: Add Exchange asset id and version into silent-installer.properties in remote installer location
+      win_lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'EXCHANGE_ASSET_ID={{API_EXCHANGE_ASSET_ID}}'
+        - 'EXCHANGE_ASSET_VERSION={{API_EXCHANGE_ASSET_VERSION}}'
+        - 'EXCHANGE_ASSET_NAME={{API_EXCHANGE_ASSET_ID}}'
+        - 'EXCHANGE_ASSET_TYPE=raml'
+        - 'API_INSTANCE_LABEL_NAME={{API_INSTANCE_LABEL_NAME}}'
+        
+    - name: Add Exchange asset file location as temp download location 
+      win_lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'EXCHANGE_ASSET_FILE_NAME={{EXCHANGE_ASSET_ID}}-{{EXCHANGE_ASSET_VERSION}}.zip'
+        - 'EXCHANGE_ASSET_DOWNLOAD_LOCATION={{scriptsLocation}}'
+      when : API_EXCHANGE_ASSET_FILE_PATH is undefined and EXCHANGE_ASSET_ID is defined
+     
+    - name: get name from API_EXCHANGE_ASSET_FILE_PATH path
+      win_stat:
+        path: "{{API_EXCHANGE_ASSET_FILE_PATH}}"
+      register: found_files
+      when : API_EXCHANGE_ASSET_FILE_PATH is defined
+      
+    - name: Add Exchange asset file location as API_EXCHANGE_ASSET_FILE_PATH download location 
+      win_lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'EXCHANGE_ASSET_FILE_NAME={{ found_files.stat.path | basename }}'
+        - 'EXCHANGE_ASSET_DOWNLOAD_LOCATION={{scriptsLocation}}'
+      when : API_EXCHANGE_ASSET_FILE_PATH is defined    
+
+    - name: Policy details into properties file
+      win_lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'API_INSTANCE_POLICIES={{scriptsLocation}}/policy.json'
+      when : API_INSTANCE_POLICIES is defined and API_INSTANCE_POLICIES != ""
+      
+    - name: Policy CROS details into properties file
+      win_lineinfile: 
+        dest: "{{scriptsLocation}}/silent-installer.properties"
+        line: '{{ item }}'
+      with_items:
+        - 'POLICY_CROS_ORIGINS={{POLICY_CROS_ORIGINS}}'
+      when : POLICY_CROS_ORIGINS is defined and POLICY_CROS_ORIGINS != ""      
+
+  tags:
+    - propertyFile    
+##Script execution
+- name: Upload exchange asset 
+  block:
+    - name: get install jar file name
+      win_find:
+        paths: "{{scriptsLocation}}"
+        patterns: 'installation-assistance*'
+      register: found_files
+    - name: Set installJarName
+      set_fact:
+        installJarName: "{{ found_files.files[0].path | basename }}"
+        
+    - name: MRT Application deployment
+      win_command: "java -cp {{ installJarName }} {{className}} -s silent-installer.properties  -uploadExchangeAssets"
+      args:
+        chdir: "{{scriptsLocation}}"
+      register: output
+    - debug:
+        var: output.stdout_lines
+  when : EXCHANGE_ASSET_ID is defined or API_EXCHANGE_ASSET_FILE_PATH is defined
+  tags:
+  - uploadAsset
+
+- name: Create API instance 
+  block:
+    - name: get install jar file name
+      win_find:
+        paths: "{{scriptsLocation}}"
+        patterns: 'installation-assistance*'
+      register: found_files
+    - name: Set installJarName
+      set_fact:
+        installJarName: "{{ found_files.files[0].path | basename }}"
+       
+    - name: MRT Application deployment
+      win_command: "java -cp {{ installJarName }} {{className}} -s silent-installer.properties -createAPIInstance"
+      args:
+        chdir: "{{scriptsLocation}}"
+      register: output
+    - debug:
+        var: output.stdout_lines
+  tags:
+  - createAPI
+

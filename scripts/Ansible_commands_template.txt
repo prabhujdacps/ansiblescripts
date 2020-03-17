@@ -1,0 +1,76 @@
+MRT install:
+=============
+ansible-playbook -i <InventoryPath>/hosts.ini MRT_Install.yml -e server=<host_file_name>
+
+ansible-playbook -i <InventoryPath>/hosts.ini MRT_Install.yml -e server=<host_file_name> -e server_action=status/delete/help -t=propertyFile/install/action/setup
+
+MRT Action:
+=============
+ansible-playbook -i <InventoryPath>/hosts.ini MRT_Action.yml -e server=<host_file_name> -e mrt_action=start/stop/status/install/remove/restart
+
+
+MRT application deployment :
+============================
+ansible-playbook -i <InventoryPath>/hosts.ini MRT_ApplicationDeploy.yml -e application=<host_file_name>
+
+ansible-playbook -i <InventoryPath>/hosts.ini MRT_ApplicationDeploy.yml -e application=<host_file_name> -e application_action=status/undeploy/redeploy/help  -t=propertyFile/deploy/action/setup
+
+
+Cluster setup:
+=============
+ansible-playbook -i <InventoryPath>/hosts.ini MRT_Cluster.yml -e cluster=<host_file_name> -e cluster_action=status/delete/addServer/deleteServer/reinstall -t -t=propertyFile/install/action/setup 
+
+
+CPS config upgrade: 
+==================
+ansible-playbook -i environment/jda-lb/hosts.ini CPS_ConfigPublish.yml -e config=CPS_ConfigUpdate
+
+Utility :
+=========
+ansible-playbook -i <InventoryPath>/hosts.ini roles/utils/utils.yml -e util=MRT/<host_file>/<group_file>
+
+
+Shell commands:
+===============
+./Ansible_Connect.sh <InventoryFilePath> <node> action=<action> -t=<tags>
+
+./Ansible_Connect.sh <InventoryFilePath> server/cluster/application/server_action/asset/util action=reinstall/status/redeploy/addServer/deleteServer/delete  -t=install/action/setup/propertyFile/clean  
+
+
+./Ansible_Connect.sh <InventoryFilePath> server_action <hostfile> action=status/restart/stop
+
+./Ansible_Connect.sh <InventoryFilePath> util <hostfile>
+
+
+Cluster creation:
+-----------------
+./Ansible_MRT_Cluster.sh <InventoryFilePath> <servers> <clusterName> <application>
+
+
+
+
+
+Install java :
+
+https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u232-b09/OpenJDK8U-jdk_x64_linux_hotspot_8u232b09.tar.gz
+https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u242-b08/OpenJDK8U-jdk_x86-32_windows_hotspot_8u242b08.msi
+
+
+ansible-playbook -i <InventoryFilePath> JDK.yml -e server=<host_file> -e WIN_JDK_INSTALL_PATH=<jdk.msi full path> -e WIN_INSTALLDIR=<Install location>
+
+ansible-playbook -i <InventoryFilePath> JDK.yml -e server=<host_file> -e LNX_JDK_INSTALL_PATH=<jdk.tz full path> -e LNX_INSTALLDIR=<Install location>
+
+ansible-playbook -i environment/jda-lb/hosts.ini JDK.yml -e server=server1 -e WIN_JDK_INSTALL_PATH=/home/jciadmin/JDAConnect/OpenJDK8U-jdk_x86-32_windows_hotspot_8u242b08.msi -e WIN_INSTALLDIR=C:\\JDKopen
+
+
+
+ansible-playbook -i environment/jda-lb-lnx/hosts.ini JDK.yml -e server=server1 -e LNX_JDK_INSTALL_PATH=/home/jciadmin/JDAConnect/OpenJDK8U-jdk_x64_linux_hotspot_8u232b09.tar.gz -e LNX_INSTALLDIR=/home/jciadmin/JDAConnect/JDK8
+
+
+Python & Java install Windows:
+-------------------------------
+ansible-playbook -i environment/hosts.ini JDK.yml -e server=server1 -e WIN_JDK_INSTALL_PATH=/home/jciadmin/JDAConnect/OpenJDK8U-jdk_x86-32_windows_hotspot_8u242b08.msi
+ansible-playbook -i environment/hosts.ini Python.yml -e server=server1 -e WIN_PY_INSTALL_PATH=/home/jciadmin/JDAConnect/python-3.8.1.exe
+
+
+

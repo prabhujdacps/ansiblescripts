@@ -1,0 +1,103 @@
+---
+- name: File setup
+  block:
+    - name: Set Java install parent path
+      set_fact:
+        installPath: "{{ansible_env.HOME}}/tools/JDK"
+      when: LNX_INSTALLDIR is undefined
+      tags:
+        - uninstall
+        - install
+        - msg
+    - name: Set Java install parent path
+      set_fact:
+        JDK_URL: "https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u232-b09/OpenJDK8U-jdk_x64_linux_hotspot_8u232b09.tar.gz"
+    - name: Set Java install parent path
+      set_fact:
+        installPath: "{{ LNX_INSTALLDIR }}"
+      when: LNX_INSTALLDIR is defined and LNX_INSTALLDIR != ""
+      tags:
+        - uninstall
+        - install
+        - msg
+    - name: Delete temp_jdk directory 
+      file:
+        state: absent
+        path: "{{ansible_env.HOME}}/temp_jdk"
+    - name: Create tools directory to transfer file into remote location
+      file:
+        state: directory
+        path: "{{ansible_env.HOME}}/temp_jdk"
+    - name: Delete JDK directory
+      file:
+        state: absent
+        path: "{{ installPath }}"
+    - name: Create JDK directory
+      file:
+        state: directory
+        path: "{{ installPath }}"
+    - name: Set Java executer
+      set_fact:
+        installFileName: "{{ LNX_JDK_INSTALL_PATH.split('/')[LNX_JDK_INSTALL_PATH.split('/')|length -1]}}"
+      when: LNX_JDK_INSTALL_PATH is defined and LNX_JDK_INSTALL_PATH != ""
+    - name: Set Java executer
+      set_fact:
+        installFileName: "{{ JDK_URL.split('/')[JDK_URL.split('/')|length -1]}}"
+      when: LNX_JDK_INSTALL_PATH is undefined
+
+    - name: Copy install zip file into remote location
+      copy:
+        src: "{{ LNX_JDK_INSTALL_PATH }}"
+        dest: "{{ansible_env.HOME}}/temp_jdk/{{ installFileName }}"
+      when: LNX_JDK_INSTALL_PATH is defined and LNX_JDK_INSTALL_PATH != ""
+
+    - name: Download JDK from {{JDK_URL}}
+      get_url:
+        url: "{{JDK_URL}}"
+        dest: "{{ansible_env.HOME}}/temp_jdk/{{ installFileName }}"
+      when: LNX_JDK_INSTALL_PATH is undefined
+      tags:
+        - uninstall
+        - install
+
+  tags:
+  - setup
+- name: Install Java
+  block:
+    - name: JDK installation {{installPath}}
+      command: "tar -xvf {{installFileName}} -C {{ installPath }}"
+      args:
+        chdir: "{{ansible_env.HOME}}/temp_jdk"
+    - name: get install jar file name
+      find:
+        paths: "{{installPath}}"
+        file_type: directory
+      register: found_files
+    - name: Set directory value
+      set_fact:
+        JAVA_HOME_PATH: "{{ found_files.files[0].path}}"
+    - name: Print several lines of text
+      vars:
+        msg: |
+             export JAVA_HOME={{JAVA_HOME_PATH}}
+             export PATH=${JAVA_HOME}/bin:${PATH}
+             sudo vi /etc/profile
+             sudo vi /etc/bashrc
+             source /etc/profile && source /etc/bashrc
+      debug:
+        msg: "{{ msg.split('\n') }}"
+    - name: Delete temp_jdk directory 
+      file:
+        state: absent
+        path: "temp_jdk"
+
+    - name: Check java version
+      command: "java -version"
+      ignore_errors: True
+      register: output
+      tags:
+        - checkjava
+    - debug:
+        var: output
+      tags:
+        - checkjava

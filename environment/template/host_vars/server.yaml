@@ -1,0 +1,10 @@
+## MRT properties
+ARM_SERVER_NAME : 
+HOST_NAME : 
+INSTALL_LOCATION : 
+
+serverProperties :
+    wrapper.java.additional.<n1> : -D<key1>=<value1>
+    wrapper.java.additional.<n2> : -D<key2>=<value3>
+    wrapper.<key1> : <value1>
+    wrapper.<key2> : <value2>

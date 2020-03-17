@@ -1,0 +1,130 @@
+---
+- name: File setup
+  block:
+    - name: "Set Java install path"
+      set_fact:
+        installPath: "{{ansible_env.USERPROFILE}}\\tools\\JDK"
+      when: WIN_INSTALLDIR is undefined
+    - name: "Set script path "
+      set_fact:
+        tempDirectory: "{{ansible_env.USERPROFILE}}\\temp_connect_dir\\jdk"
+      when: WIN_JDK_INSTALL_PATH is defined
+
+    - name: Delete temp_connect_dir directory 
+      win_file:
+        state: absent
+        path: "{{tempDirectory}}"
+      when: WIN_JDK_INSTALL_PATH is defined
+      
+    - name: Create tools directory to transfer file into remote location
+      win_file:
+        state: directory
+        path: "{{tempDirectory}}"
+      when: WIN_JDK_INSTALL_PATH is defined
+      tags:
+        - uninstall
+        - install
+        - msg
+    - name: Set Java install parent path
+      set_fact:
+        JDK_URL: "https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u242-b08/OpenJDK8U-jdk_x86-32_windows_hotspot_8u242b08.msi"
+      tags:
+        - install
+        - uninstall
+      when: WIN_JDK_INSTALL_PATH is undefined
+    - name: Set Java install parent path
+      set_fact:
+        installPath: "{{ WIN_INSTALLDIR }}"
+      when: WIN_INSTALLDIR is defined and WIN_INSTALLDIR != ""
+      tags:
+        - uninstall
+        - install
+        - msg
+
+    - name: Set Java executer
+      set_fact:
+        installFileName: "{{ WIN_JDK_INSTALL_PATH.split('/')[WIN_JDK_INSTALL_PATH.split('/')|length -1]}}"
+      when: WIN_JDK_INSTALL_PATH is defined and WIN_JDK_INSTALL_PATH != ""
+      tags:
+        - install
+        - uninstall
+    - name: Set Java executer
+      set_fact:
+        installFileName: "{{ JDK_URL.split('/')[JDK_URL.split('/')|length -1]}}"
+      when: WIN_JDK_INSTALL_PATH is undefined
+      tags:
+        - install
+        - uninstall
+    - name: Set Java executer
+      set_fact:
+        install_path: "{{tempDirectory}}\\{{installFileName}}"
+      when: WIN_JDK_INSTALL_PATH is defined and WIN_JDK_INSTALL_PATH != ""
+      tags:
+        - install
+        - uninstall
+    - name: Set Java executer
+      set_fact:
+        install_path: "{{JDK_URL}}"
+      when: WIN_JDK_INSTALL_PATH is undefined
+      tags:
+        - install
+        - uninstall
+    - name: Copy install zip file into remote location
+      win_copy:
+        src: "{{ WIN_JDK_INSTALL_PATH }}"
+        dest: "{{tempDirectory}}\\{{installFileName}}"
+      when: WIN_JDK_INSTALL_PATH is defined and WIN_JDK_INSTALL_PATH != ""
+  tags:
+  - setup
+- name: Install Java
+  block:
+    - name: Uninstall Java with {{install_path}} 
+      win_package:
+        path: "{{install_path}}"
+        state: absent
+        arguments: "/x /qn"
+        product_id: AdoptOpenJDK
+      register: found_files
+      tags:
+        - uninstall
+    - name: Delete JDK directory
+      win_file:
+        state: absent
+        path: "{{ installPath }}"
+    - name: Create JDK directory
+      win_file:
+        state: directory
+        path: "{{ installPath }}"
+    - name: Install Java with arguments , Install location={{ installPath }}
+      win_package:
+        path: "{{install_path}}"
+        state: present
+        arguments: "INSTALLDIR={{ installPath }} /qn"
+        product_id: AdoptOpenJDK
+      register: found_files
+      when: WIN_INSTALLDIR is defined and WIN_INSTALLDIR != ""
+      tags:
+        - install
+    - name: Install Java {{install_path}} without argument of destination. It will install in C:\Program Files (x86)\AdoptOpenJDK
+      win_package:
+        path: "{{install_path}}"
+        state: present
+        product_id: AdoptOpenJDK
+      register: found_files
+      when: WIN_INSTALLDIR is undefined
+      tags:
+        - install
+    - debug:
+        var: found_files
+      tags:
+        - install
+    - name: Check java version
+      win_command: "java -version"
+      ignore_errors: True
+      register: output
+      tags:
+        - checkjava
+    - debug:
+        var: output
+      tags:
+        - checkjava

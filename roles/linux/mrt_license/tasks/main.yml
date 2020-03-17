@@ -1,0 +1,31 @@
+---
+- name: Check for MULE_LICENSE_PATH
+  local_action: stat path={{ MULE_LICENSE_PATH }}
+  register: mule_license_file
+  when: MULE_LICENSE_PATH is defined
+  tags:
+    - license  
+- name: Install Mule license
+  block:
+    - name: Set properties
+      set_fact:
+        scriptsLocation: "{{ansible_env.HOME}}/temp_connect_dir/server_{{ARM_SERVER_NAME}}"
+    - name: Copy license file
+      copy:
+        src: "{{ MULE_LICENSE_PATH }}"
+        dest: "{{ scriptsLocation }}/"
+    - name: Check server directory
+      stat:
+        path: "{{ INSTALL_LOCATION }}/bin"
+      register: mrt_location
+    - name: MRT install license
+      command: "./mule -installLicense {{ scriptsLocation }}/license.lic"
+      args:
+        chdir: "{{ INSTALL_LOCATION }}/bin"
+      register: output
+      ignore_errors: True
+    - debug:
+            var: output.stdout_lines
+  when: MULE_LICENSE_PATH is defined and mule_license_file.stat.exists
+  tags:
+    - license 

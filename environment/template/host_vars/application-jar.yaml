@@ -1,0 +1,12 @@
+## SERVER properties , ARM_SERVER_NAME can be server /cluster/ server group
+ARM_SERVER_NAME :
+
+#Application information
+APPLICATION_NAME : 
+MULE_APPLICATION_JAR_PATH : 
+MULE_APPLICATION_JAR_NAME :
+
+
+applicationProperties :
+    <key1>: <value1>
+    <key2>: <value2>

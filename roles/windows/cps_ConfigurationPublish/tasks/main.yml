@@ -1,0 +1,132 @@
+---
+- name: Init
+  block:
+    - name: Set python script temp directory 
+      set_fact:
+        scriptsLocation: "{{ansible_env.USERPROFILE}}\\temp_connect_dir\\configPush_{{hostvars[inventory_hostname]['mule.env']}}_{{hostvars[inventory_hostname]['cps.label']}}"
+        arguments: "{{hostvars[inventory_hostname]['mule.env']}}  {{hostvars[inventory_hostname]['cps.label']}} {{hostvars[inventory_hostname]['cps.protocol']}} {{hostvars[inventory_hostname]['cps.host']}} {{hostvars[inventory_hostname]['cps.port']}}"
+    - name: Set Excahnge information 
+      set_fact:
+        assert_scriptsLocation: "{{ansible_env.USERPROFILE}}\\temp_connect_dir\\asset_{{ EXCHANGE_ASSET_ID }}_{{ EXCHANGE_ASSET_VERSION }}"
+      when: EXCHANGE_ASSET_ID is defined and EXCHANGE_ASSET_ID != ""
+    - name: Take all applications directories from config_repo directoy
+      set_fact:
+        ApplicationConfigs_Dirs: ""
+      when: ApplicationConfigDirectories is undefined
+    - name: Take selected applications directories from config_repo directoy
+      set_fact:
+        ApplicationConfigs_Dirs: "{{ApplicationConfigDirectories }}"
+      when: ApplicationConfigDirectories is defined and ApplicationConfigDirectories != ""
+    - debug:
+        msg: "CPS application properties: {{arguments}}"
+  tags:
+  - configsetup
+  - configPush
+  - configUpdate
+  
+- name: Setup
+  block:
+
+    - name: Delete scriptsLocation directory 
+      win_file:
+        state: absent
+        path: "{{scriptsLocation}}"
+    - name: Create tools directory to transfer python scripts into remote location
+      win_file:
+        state: directory
+        path: "{{scriptsLocation}}"
+    - name: Transfer scripts to remote location
+      win_copy:
+        src: "scripts/cps_promotion"
+        dest: "{{scriptsLocation}}\\"
+        
+    - name: Create Artifacts directory
+      win_file:
+        state: directory
+        path: "{{scriptsLocation}}/Artifacts"
+
+    - name: get download asset file name 
+      win_find:
+        paths: "{{assert_scriptsLocation}}"
+        patterns: "{{ EXCHANGE_ASSET_ID }}-{{ EXCHANGE_ASSET_VERSION }}*"
+      register: found_files
+      when: CONFIG_REPO_FILE_PATH is undefined and EXCHANGE_ASSET_ID is defined and EXCHANGE_ASSET_ID != ""
+      
+    - name: Set python script temp directory 
+      set_fact:
+        CONFIG_REPO_FILE_PATH: "{{ found_files.files[0].path }}"
+      when: CONFIG_REPO_FILE_PATH is undefined and EXCHANGE_ASSET_ID is defined and EXCHANGE_ASSET_ID != ""
+      
+    - name: Check config zip file 
+      win_stat:
+        path: "{{CONFIG_REPO_FILE_PATH}}"
+      register: configFile
+      when: CONFIG_REPO_FILE_PATH is defined
+
+    - name: Check config zip file in ansible location 
+      local_action: stat path="{{CONFIG_REPO_FILE_PATH}}"
+      register: local_configFile
+      when: configFile.stat.exists == False and CONFIG_REPO_FILE_PATH is defined
+
+    - name: Transfer config file to temp location
+      win_copy:
+        src: "{{CONFIG_REPO_FILE_PATH}}"
+        dest: "{{scriptsLocation}}\\Config-repo.zip"
+      when: EXCHANGE_ASSET_ID is undefined and local_configFile is defined and local_configFile.stat.exists 
+
+    - name: Unzipping config temp zip file in scrips location 
+      win_unzip:
+        src: "{{scriptsLocation}}\\Config-repo.zip"
+        dest: "{{scriptsLocation}}\\Artifacts"
+      when: EXCHANGE_ASSET_ID is undefined and local_configFile is defined and local_configFile.stat.exists
+      
+    - name: Unzipping config zip file in scrips location 
+      win_unzip:
+        src: "{{CONFIG_REPO_FILE_PATH}}"
+        dest: "{{scriptsLocation}}\\Artifacts"
+      when: configFile is defined and  configFile.stat.exists and CONFIG_REPO_FILE_PATH is defined
+
+  tags:
+  - configsetup
+- name: Publish configurations into CPS
+  block:
+    - name: Publish configurations into CPS
+      win_command: "python CPS_Configuration_Promotion.py {{scriptsLocation}}\\Artifacts  {{arguments}} {{ApplicationConfigs_Dirs}}"
+      ignore_errors: True
+      register: output
+      args:
+        chdir: "{{scriptsLocation}}\\cps_promotion"
+    - debug:
+        var: output.stdout_lines
+  tags:
+    - configPush
+
+- name: Configguration update 
+  block:
+    - name: Set python script temp directory 
+      set_fact:
+        temp_cps_configFilePath: "{{scriptsLocation}}\\cps_promotion\\cps_configUpgrade.yml"
+    - name: Delete silent-installer.properties
+      win_file:
+        state: absent
+        path: "{{temp_cps_configFilePath}}"
+    - name: Create properties file
+      win_file:
+        path: "{{temp_cps_configFilePath}}"
+        state: touch
+    - name: Add wrapper properties into silent-installer.properties in remote installer location
+      win_lineinfile:
+        dest: "{{temp_cps_configFilePath}}"
+        line: "{{ Applications | to_json}}"
+      with_dict: "{{ Applications }}"
+    - name: Update configurations into CPS
+      win_command: "python CPS_Configuration_Promotion.py {{temp_cps_configFilePath}}  {{arguments}} {{ApplicationConfigs_Dirs}}"
+      ignore_errors: True
+      register: output
+      args:
+        chdir: "{{scriptsLocation}}\\cps_promotion"
+    - debug:
+        var: output.stdout_lines
+  when: Applications is defined
+  tags:
+    - configUpdate

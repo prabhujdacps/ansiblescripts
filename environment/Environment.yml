@@ -1,0 +1,175 @@
+MRT:
+    linux1:
+        vars:
+            ansible_host: 
+            ansible_user: 
+            ansible_connection: ssh
+        host_vars: [server,application,cluster,configupdate,api]
+            
+    windows1:
+        vars:
+            ansible_host: 
+            ansible_user: 
+            ansible_password: 
+            ansible_connection: winrm
+            ansible_winrm_transport: basic
+            ansible_winrm_server_cert_validation: ignore
+        host_vars: [server2,server4]
+        
+
+###Common properties
+group_vars:
+    all:
+        MRT_INSTALL_LOCATION : 
+        INSTALL_ZIP_NAME : 
+        ## Mule license
+        #MULE_LICENSE_PATH : '{{MRT_INSTALL_LOCATION}}/license.lic'
+        ## ARM Password encryption
+        #SOURCE_KEY_STORE_PATH : '{{MRT_INSTALL_LOCATION}}/jda-connect-secret-key.jks'
+        #AES_SECRET_KEY_STORE_PATH : 
+        #AES_SECRET_KEY_STORE_PASSWORD : 
+        #AES_SECRET_KEY_ALIAS : 
+        #AES_SECRET_KEY_PASSWORD : 
+        ARM_INSTALLATION : Y
+        EU_COUNTRY : N
+        ANYPOINT_USER_NAME : 
+        ANYPOINT_USER_PASSWORD : 
+        BUSINESS_GROUP : 
+        ARM_ENVIRONMENT_NAME :  
+        CONFIG_REPO_FILE_PATH :
+        
+        ##External Exchange to get assert informations
+#        EXTERNAL_EXCHANGE_EU_COUNTRY : N
+#        EXTERNAL_EXCHANGE_ANYPOINT_USER_NAME : 
+#        EXTERNAL_EXCHANGE_ANYPOINT_USER_PASSWORD : 
+#        EXTERNAL_EXCHANGE_BUSINESS_GROUP : 
+
+#        EXCHANGE_ASSET_VERSION: 
+       
+        CPS_HOST: 
+        CPS_PORT: 
+        CPS_LABEL: 
+        
+
+
+host_vars:
+    server:
+        ARM_SERVER_NAME : 
+        HOST_NAME : 
+        INSTALL_LOCATION : 
+        serverProperties :
+            <key> : <value>
+
+
+    cluster:
+        ARM_CLUSTER_NAME : 
+        ARM_CLUSTER_MULTICAST : Y
+        ARM_SERVER :
+            <NODE> :
+                 NAME :
+            <NODE> :
+                 NAME :
+             
+    servergroup:
+        ARM_SERVER_GROUP_NAME : 
+        ARM_SERVER :
+            <NODE> :
+                 NAME :
+            <NODE> :
+                 NAME :
+             
+    applicationjar:
+        ARM_SERVER_NAME :
+        APPLICATION_NAME : 
+        MULE_APPLICATION_JAR_PATH : 
+        MULE_APPLICATION_JAR_NAME :
+        applicationProperties :
+            <key1>: <value1>
+            <key2>: <value2>
+            
+    application-external-exchange:
+        ARM_SERVER_NAME :
+        APPLICATION_NAME :
+        EXCHANGE_ASSET_ID:
+        EXCHANGE_ASSET_VERSION:
+        EXTERNAL_ASSET : yes
+        EXTERNAL_EXCHANGE_EU_COUNTRY : 
+        EXTERNAL_EXCHANGE_ANYPOINT_USER_NAME : 
+        EXTERNAL_EXCHANGE_ANYPOINT_USER_PASSWORD : 
+        EXTERNAL_EXCHANGE_BUSINESS_GROUP : 
+        applicationProperties :
+            <key1>: <value1>
+            <key2>: <value2>
+
+    application-internal-exchange:
+        ARM_SERVER_NAME :
+        APPLICATION_NAME :
+        EXCHANGE_ASSET_ID:
+        EXCHANGE_ASSET_VERSION:
+        applicationProperties :
+            <key1>: <value1>
+            <key2>: <value2>
+        
+    configupdate-zip:
+        CONFIG_REPO_FILE_PATH:
+        mule.env : 
+        cps.label : 
+        cps.host : 
+        cps.port : 
+        cps.protocol : 
+
+        Applications:
+            MessageStore:
+                categories:
+                    database:
+                        MSDatabase.url: 
+                        MSDatabase.driverClassName: 
+                        MSDatabase.user: 
+                        MSDatabase.password: 
+
+    configupdate-asset:
+        EXCHANGE_ASSET_ID: 
+        EXCHANGE_ASSET_VERSION: 
+        mule.env : 
+        cps.label : 
+        cps.host : 
+        cps.port : 
+        cps.protocol : https
+
+        Applications:
+            MessageStore:
+                categories:
+                    database:
+                        MSDatabase.url: 
+                        MSDatabase.driverClassName: 
+                        MSDatabase.user: 
+                        MSDatabase.password: 
+                        
+    
+    api-instance:
+        API_EXCHANGE_ASSET_ID : 
+        API_EXCHANGE_ASSET_VERSION : 
+        API_INSTANCE_LABEL_NAME : 
+        API_INSTANCE_POLICIES : 
+        POLICY_CROS_ORIGINS :
+
+    api-instance-zip-raml:
+        API_EXCHANGE_ASSET_FILE_PATH: 
+        API_EXCHANGE_ASSET_ID : 
+        API_EXCHANGE_ASSET_VERSION : 
+        EXCHANGE_ASSET_NAME:
+        API_INSTANCE_LABEL_NAME :         
+        
+    api-instance-exchange:
+        EXCHANGE_ASSET_ID : jda-connect-configuration-service-api
+        #EXCHANGE_ASSET_ID : jda-connect-message-store-service-api
+        EXCHANGE_ASSET_VERSION : 
+        EXTERNAL_EXCHANGE_EU_COUNTRY : 
+        EXTERNAL_EXCHANGE_ANYPOINT_USER_NAME : 
+        EXTERNAL_EXCHANGE_ANYPOINT_USER_PASSWORD : 
+        EXTERNAL_EXCHANGE_BUSINESS_GROUP :
+        API_EXCHANGE_ASSET_ID : 
+        API_EXCHANGE_ASSET_VERSION : 
+        API_INSTANCE_LABEL_NAME : 
+        API_INSTANCE_POLICIES : 
+        POLICY_CROS_ORIGINS : 

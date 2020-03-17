@@ -1,0 +1,142 @@
+MRT:
+    machine1:
+        vars:
+            ansible_host: 
+            ansible_user: 
+            ansible_password:
+            ##Windows 
+            ansible_connection: winrm
+            ansible_winrm_transport: basic
+            ansible_winrm_server_cert_validation: ignore
+                   ##OR##
+            ##Linux 
+            ansible_connection: ssh
+            ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+            
+        host_vars: [server1,cluster,asset,application,configupdate]
+            
+    machine2:
+        vars:
+            ansible_host: 
+            ansible_user: 
+            ansible_password: 
+            ##Windows 
+            ansible_connection: winrm
+            ansible_winrm_transport: basic
+            ansible_winrm_server_cert_validation: ignore
+                   
+            ##Linux 
+            ansible_connection: ssh
+            ansible_ssh_common_args: '-o StrictHostKeyChecking=no'  
+        host_vars: [server2]
+
+
+###Common properties
+group_vars:
+    all:
+        ## jda-connect-mule4-server-installation zip file location
+        MRT_INSTALL_LOCATION :
+        ## Zip name
+        INSTALL_ZIP_NAME : 
+        ## Mule license file full path
+        MULE_LICENSE_PATH : 
+        ## ARM Password encryption properties
+        SOURCE_KEY_STORE_PATH : 
+        AES_SECRET_KEY_STORE_PATH : 
+        AES_SECRET_KEY_STORE_PASSWORD : 
+        AES_SECRET_KEY_ALIAS : 
+        AES_SECRET_KEY_PASSWORD :
+        
+        ARM_INSTALLATION : Y
+        EU_COUNTRY : N
+        ANYPOINT_USER_NAME : 
+        ANYPOINT_USER_PASSWORD : 
+        BUSINESS_GROUP : 
+        ARM_ENVIRONMENT_NAME : 
+
+host_vars:
+    ##VM1
+    server1:
+        ARM_SERVER_NAME : 
+        HOST_NAME : 
+        INSTALL_LOCATION :
+        ### Server wrapper.conf updated properties 
+        serverProperties :
+            <key> : <values>
+    ##VM2
+    server2:
+        ARM_SERVER_NAME : 
+        HOST_NAME : 
+        INSTALL_LOCATION : 
+        ### Server wrapper.conf updated properties
+        serverProperties :
+            <key> : <values>
+            
+    cluster:
+        ## Cluster name 
+        ARM_CLUSTER_NAME :
+        ## Multi case cluster (Y/N)
+        ARM_CLUSTER_MULTICAST : Y
+        ## Server group name
+        ARM_SERVER_GROUP_NAME :
+        ## Server(s) names that makes as cluster (unicast) /server group 
+        ARM_SERVER :
+            A :
+             NAME : 
+            B :
+             NAME : 
+
+    asset:
+        ## Exchange asset details 
+        EXCHANGE_ASSET_ID: 
+        EXCHANGE_ASSET_VERSION: 
+        EXCHANGE_ASSET_FILE_NAME: 
+        EXCHANGE_ASSET_DOWNLOAD_LOCATION: 
+
+    application:
+        ## Target name ( Server / Cluster / Server group )
+        ARM_SERVER_NAME : 
+        ## Application name
+        APPLICATION_NAME : 
+        
+        ## Mule application deploy with jar
+        MULE_APPLICATION_JAR_PATH : 
+        MULE_APPLICATION_JAR_NAME : 
+        
+        ## Deploying application from Exchange asset
+        EXCHANGE_ASSET_ID: 
+        EXCHANGE_ASSET_VERSION:
+        applicationProperties :
+            <key>: <value> 
+
+        
+    configupdate:
+        ### Config-repo directory zip full path 
+        CONFIG_REPO_FILE_PATH :
+        mule.env : 
+        cps.label : 
+        cps.host : 
+        cp.port : 
+        cps.protocol : https
+
+        Applications:
+            <application>:
+                main:
+                    <key>: <values>
+                categories:
+                    category1:
+                        <key>: <values>
+                    category2:
+                        <key>: <values>
+                category-instance:
+                    categoryinstance1:
+                        <key>: <values>
+                    categoryinstance2:
+                        <key>: <values>
+
+
+
+
+
+
+

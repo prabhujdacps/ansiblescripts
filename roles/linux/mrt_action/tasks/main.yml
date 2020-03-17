@@ -1,0 +1,21 @@
+---
+- name: Check server
+  stat:
+    path: "{{ INSTALL_LOCATION }}/bin"
+  register: mrt_location
+  tags:
+  - install
+- name: Script execution
+  block:
+    - name: MRT server :{{mrt_action}}
+      command: "./mule {{mrt_action}}"
+      args:
+        chdir: "{{ INSTALL_LOCATION }}/bin"
+      register: output
+      ignore_errors: True
+    - debug:
+            var: output.stdout_lines
+      when: output is defined
+  when: mrt_location.stat.exists and ( mrt_action =="start" or  mrt_action =="stop" or  mrt_action =="status" or  mrt_action =="restart" or  mrt_action =="install" or  mrt_action =="remove")
+  tags:
+  - install

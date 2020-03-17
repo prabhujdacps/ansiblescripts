@@ -1,0 +1,125 @@
+---
+- name: File setup
+  block:
+    - name: "Set Python install path"
+      set_fact:
+        installPath: "{{ansible_env.USERPROFILE}}/python/"
+      when: WIN_INSTALLDIR is undefined
+
+    - name: "Set Python install path"
+      set_fact:
+        scriptsLocation: "{{ansible_env.USERPROFILE}}\\temp_connect_dir\\python"
+      when: WIN_PY_INSTALL_PATH is defined
+
+    - name: Delete temp_connect_dir directory 
+      win_file:
+        state: absent
+        path: "{{scriptsLocation}}"
+      when: WIN_PY_INSTALL_PATH is defined
+      
+    - name: Create tools directory to transfer file into remote location
+      win_file:
+        state: directory
+        path: "{{scriptsLocation}}"
+      when: WIN_PY_INSTALL_PATH is defined
+        
+    - name: Set Python install parent path
+      set_fact:
+        PY_URL: "https://www.python.org/ftp/python/3.8.1/python-3.8.1.exe"
+
+      when: WIN_PY_INSTALL_PATH is undefined
+    - name: Set Python install parent path
+      set_fact:
+        installPath: "{{ WIN_INSTALLDIR }}"
+      when: WIN_INSTALLDIR is defined and WIN_INSTALLDIR != ""
+
+    - name: Set Python executer
+      set_fact:
+        installFileName: "{{ WIN_PY_INSTALL_PATH.split('/')[WIN_PY_INSTALL_PATH.split('/')|length -1]}}"
+      when: WIN_PY_INSTALL_PATH is defined and WIN_PY_INSTALL_PATH != ""
+
+    - name: Set Python executer
+      set_fact:
+        installFileName: "{{ PY_URL.split('/')[PY_URL.split('/')|length -1]}}"
+      when: WIN_PY_INSTALL_PATH is undefined
+
+    - name: Set Python executer
+      set_fact:
+        install_path: "{{ scriptsLocation }}\\{{installFileName}}"
+      when: WIN_PY_INSTALL_PATH is defined and WIN_PY_INSTALL_PATH != ""
+
+    - name: Set Python executer
+      set_fact:
+        install_path: "{{PY_URL}}"
+      when: WIN_PY_INSTALL_PATH is undefined
+
+    - name: Copy install zip file into remote location
+      win_copy:
+        src: "{{ WIN_PY_INSTALL_PATH }}"
+        dest: "{{ scriptsLocation }}/{{ installFileName }}"
+      when: WIN_PY_INSTALL_PATH is defined and WIN_PY_INSTALL_PATH != ""
+  tags:
+  - setup
+- name: Install Python
+  block:
+    - name: Uninstall Python with {{install_path}} 
+      win_package:
+        path: "{{install_path}}"
+        state: absent
+        arguments: "/x /qn"
+        product_id: Python3
+      register: found_files
+      tags:
+        - uninstall
+    - name: Delete Python directory
+      win_file:
+        state: absent
+        path: "{{ installPath }}"
+    - name: Create Python directory
+      win_file:
+        state: directory
+        path: "{{ installPath }}"
+    - name: Install Python with arguments , Install location={{ installPath }}
+      win_package:
+        path: "{{install_path}}"
+        state: present
+        arguments: "/quiet InstallAllUsers=1 PrependPath=1 Include_test=0"
+        product_id: Python3
+      register: found_files
+      when: WIN_INSTALLDIR is defined and WIN_INSTALLDIR != ""
+      tags:
+        - install
+    - name: Install Python {{install_path}} without argument of destination. It will install in C:\Program Files (x86)\Python38-32
+      win_package:
+        path: "{{install_path}}"
+        state: present
+        product_id: Python3
+        arguments: "/quiet InstallAllUsers=1 PrependPath=1 Include_test=0"
+      register: found_files
+      when: WIN_INSTALLDIR is undefined
+      tags:
+        - install
+    - debug:
+        var: found_files
+      tags:
+        - install
+    - name: Check python version
+      win_command: "python -V"
+      ignore_errors: True
+      register: output
+      tags:
+        - checkpython
+    - debug:
+        var: output
+      tags:
+        - checkpython
+    - name: Install modules
+      win_command: "pip install --upgrade pyyaml"
+      ignore_errors: True
+      register: output
+      tags:
+        - modules
+    - debug:
+        var: output
+      tags:
+        - modules

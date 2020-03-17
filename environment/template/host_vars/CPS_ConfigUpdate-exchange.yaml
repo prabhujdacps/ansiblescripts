@@ -1,0 +1,30 @@
+## Application directories under CONFIG_REPO_FILE_PATH/<Application>, Provide multiple values with (,) seperator, Example : MessageStore,MessageBroker
+#ApplicationConfigDirectories : MessageBroker,MessageStore
+EXCHANGE_ASSET_ID: jda-config-repo
+EXCHANGE_ASSET_VERSION: 
+mule.env : 
+cps.label : 
+cps.host : 
+cps.port : 
+cps.protocol : 
+
+Applications:
+    MessageStore:
+#        categories:
+#            database:
+#                MSDatabase.url: ""
+#                MSDatabase.driverClassName: ""
+#                MSDatabase.user: ""
+#                MSDatabase.password: ""
+#    MessageBroker:
+#        main:
+#            mb.appName: "JMB"
+#            mb.servicesRegistryService.useSRS: "false"
+#        categories:
+#            errorReport:
+#                eframework.applicationId: "jda-message-broker"
+#                eframework.errorReport.success.status: "RECEIVED"
+#            inboundDlq:
+#                inboundDlq.file.path: "./inbound/dlq"
+
+

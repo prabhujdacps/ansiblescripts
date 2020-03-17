@@ -1,0 +1,20 @@
+## SERVER properties , ARM_SERVER_NAME can be server /cluster/ server group
+ARM_SERVER_NAME :
+
+#Application information
+APPLICATION_NAME :
+
+EXCHANGE_ASSET_ID:
+EXCHANGE_ASSET_VERSION:
+EXTERNAL_ASSET : yes
+
+###External Exchange details 
+
+EXTERNAL_EXCHANGE_EU_COUNTRY : 
+EXTERNAL_EXCHANGE_ANYPOINT_USER_NAME : 
+EXTERNAL_EXCHANGE_ANYPOINT_USER_PASSWORD : 
+EXTERNAL_EXCHANGE_BUSINESS_GROUP : 
+
+applicationProperties :
+    <key1>: <value1>
+    <key2>: <value2>

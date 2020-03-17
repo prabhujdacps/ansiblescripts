@@ -1,0 +1,11 @@
+- name: Ansible utiity
+  hosts: "{{ util | default('MRT') }}"
+
+  tasks:
+    - name: Check Configurations
+      block:
+        - name: Check Configurations
+          debug:
+                var: hostvars[inventory_hostname]
+      tags:
+      - config
